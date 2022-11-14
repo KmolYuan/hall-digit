@@ -12,7 +12,6 @@
 #define LOWER 400     // no magnet lower threshold
 #define N 12          // number of magnets
 #define RADIUS 0.065  // radius in meter
-#define EPSILON 1.1920929E-7
 
 using Time = unsigned long;
 
