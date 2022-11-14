@@ -1,3 +1,12 @@
+#define SERVO
+
+#ifdef SERVO
+#include <Event.h>
+#include <Servo.h>
+#include <Timer.h>
+#define SERVO_PIN A1
+#endif
+
 #define ANALOG_PIN A0 // AO to A0
 #define UPPER 600     // no magnet upper threshold
 #define LOWER 400     // no magnet lower threshold
@@ -93,7 +102,23 @@ public:
   }
 };
 
-void setup() { Serial.begin(9600); }
+#ifdef SERVO
+Servo servo;
+Timer timer;
+
+void rot_servo() {
+  static int pos = 0;
+  servo.write(pos++);
+}
+#endif
+
+void setup() {
+#ifdef SERVO
+  servo.attach(SERVO_PIN);
+  timer.every(1000, rot_servo);
+#endif
+  Serial.begin(9600);
+}
 
 void loop() {
   static Buffer<4> buffer;
