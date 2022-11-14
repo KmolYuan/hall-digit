@@ -13,13 +13,18 @@ enum class Sign : char {
   Negative = -1,
 };
 
+struct Velocity {
+  float time;
+  float v;
+};
+
 template <size_t SIZE = 4> class Buffer {
   static_assert(SIZE >= 4);
   size_t end = 0; // An exclusive terminal index
   Time time[SIZE]{};
   Sign sign[SIZE]{};
-  float velocity[SIZE]{};
-  float v_time[SIZE]{};
+  Velocity v_raw;
+  Velocity v;
 
 public:
   void update(const Time t, const Sign s) {
@@ -41,41 +46,44 @@ public:
     // Append
     time[end] = t;
     sign[end] = s;
-    // Calculate vecolcity
-    if (sign[end] != Sign::Neutral) {
-      // 0-1 <=> 2-3
-      // 0-1 <=> 1-2
-      if (sign[last] == Sign::Neutral) {
-        vel_block((size_t[]){0, 1, 2, 3});
-      } else {
-        vel_block((size_t[]){0, 1, 1, 2});
-      }
-    } else if (sign[index(2)] == Sign::Neutral) {
-      // 0-1 <=> 2-3 (neutral)
-      vel_block((size_t[]){0, 1, 2, 3});
-    } else {
-      // 1-2 <=> 2-3 (neutral)
-      vel_block((size_t[]){1, 2, 2, 3});
-    }
-    // Calculate acceleration
     {
-      const float t = float(v_time[end] - v_time[last]);
-      const float acc =
-          t == 0. ? 0. : 1000. * (velocity[end] - velocity[last]) / t;
-      Serial.println(String(v_time[end]) + " " + String(velocity[end]) + " " +
-                     String(acc));
+      // Calculate vecolcity
+      Velocity v_raw;
+      if (sign[end] != Sign::Neutral) {
+        // 0-1 <=> 2-3
+        // 0-1 <=> 1-2
+        if (sign[last] == Sign::Neutral) {
+          v_raw = vel_block((size_t[]){0, 1, 2, 3});
+        } else {
+          v_raw = vel_block((size_t[]){0, 1, 1, 2});
+        }
+      } else if (sign[index(2)] == Sign::Neutral) {
+        // 0-1 <=> 2-3 (neutral)
+        v_raw = vel_block((size_t[]){0, 1, 2, 3});
+      } else {
+        // 1-2 <=> 2-3 (neutral)
+        v_raw = vel_block((size_t[]){1, 2, 2, 3});
+      }
+      // Average velocity
+      Velocity v = {(v_raw.time + this->v_raw.time) * 0.5,
+                    (v_raw.v + this->v_raw.v) * 0.5};
+      this->v_raw = v_raw;
+      // Calculate acceleration
+      const float t = v.time - this->v.time;
+      const float acc = t == 0. ? 0. : 1000. * (v.v - this->v.v) / t;
+      Serial.println(String(v.time) + " " + String(v.v) + " " + String(acc));
+      this->v = v;
     }
     end += 1;
     if (end == SIZE)
       end = 0;
   }
 
-  void vel_block(const size_t (&ind)[4]) {
+  auto vel_block(const size_t (&ind)[4]) const -> Velocity {
     const float t1 = float(time[index(ind[0])] + time[index(ind[1])]) * 0.5;
     const float t2 = float(time[index(ind[2])] + time[index(ind[3])]) * 0.5;
     const float t = t1 - t2;
-    velocity[end] = t == 0. ? 0. : 2000. * RADIUS * PI / N / t;
-    v_time[end] = (t1 + t2) * 0.5;
+    return {(t1 + t2) * 0.5, t == 0. ? 0. : 2000. * RADIUS * PI / N / t};
   }
 
   // Negative index from the end, where `index(0) == end`.
