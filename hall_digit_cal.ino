@@ -31,7 +31,6 @@ template <size_t SIZE = 4> class Buffer {
   size_t end = 0; // An exclusive terminal index
   Time time[SIZE]{};
   Sign sign[SIZE]{};
-  Velocity v_raw;
   Velocity v;
 
 public:
@@ -56,27 +55,21 @@ public:
     sign[end] = s;
     {
       // Calculate vecolcity
-      Velocity v_raw;
+      Velocity v;
       if (sign[end] != Sign::Neutral) {
         // 0-1 <=> 2-3
         // 0-1 <=> 1-2
         if (sign[last] == Sign::Neutral) {
-          v_raw = vel_block((size_t[]){0, 1, 2, 3});
+          v = vel_block((size_t[]){0, 1, 2, 3});
         } else {
-          v_raw = vel_block((size_t[]){0, 1, 1, 2});
+          v = vel_block((size_t[]){0, 1, 1, 2});
         }
       } else if (sign[index(2)] != Sign::Neutral) {
         // 1-2 <=> 2-3 (neutral)
-        v_raw = vel_block((size_t[]){1, 2, 2, 3});
+        v = vel_block((size_t[]){1, 2, 2, 3});
       } else {
-        // sign[index(2)] == Sign::Neutral
-        // 0-1 <=> 2-3 (neutral)
-        // v_raw = vel_block((size_t[]){0, 1, 2, 3});
         goto end;
       }
-      // Average velocity
-      const Velocity v = v_raw;
-      this->v_raw = v_raw;
       // Calculate acceleration
       const float t = v.time - this->v.time;
       const float acc = t == 0. ? 0. : 1000. * (v.v - this->v.v) / t;
