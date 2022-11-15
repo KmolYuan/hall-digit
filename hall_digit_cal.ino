@@ -1,4 +1,4 @@
-#define SERVO
+// #define SERVO
 
 #ifdef SERVO
 #include <Event.h>
@@ -65,16 +65,17 @@ public:
         } else {
           v_raw = vel_block((size_t[]){0, 1, 1, 2});
         }
-      } else if (sign[index(2)] == Sign::Neutral) {
-        // 0-1 <=> 2-3 (neutral)
-        v_raw = vel_block((size_t[]){0, 1, 2, 3});
-      } else {
+      } else if (sign[index(2)] != Sign::Neutral) {
         // 1-2 <=> 2-3 (neutral)
         v_raw = vel_block((size_t[]){1, 2, 2, 3});
+      } else {
+        // sign[index(2)] == Sign::Neutral
+        // 0-1 <=> 2-3 (neutral)
+        // v_raw = vel_block((size_t[]){0, 1, 2, 3});
+        goto end;
       }
       // Average velocity
-      Velocity v = {(v_raw.time + this->v_raw.time) * 0.5,
-                    (v_raw.v + this->v_raw.v) * 0.5};
+      const Velocity v = v_raw;
       this->v_raw = v_raw;
       // Calculate acceleration
       const float t = v.time - this->v.time;
@@ -82,6 +83,7 @@ public:
       Serial.println(String(v.time) + " " + String(v.v) + " " + String(acc));
       this->v = v;
     }
+  end:
     end += 1;
     if (end == SIZE)
       end = 0;
@@ -90,7 +92,7 @@ public:
   auto vel_block(const size_t (&ind)[4]) const -> Velocity {
     const float t1 = float(time[index(ind[0])] + time[index(ind[1])]) * 0.5;
     const float t2 = float(time[index(ind[2])] + time[index(ind[3])]) * 0.5;
-    const float t = t1 - t2;
+    const float t = abs(t1 - t2);
     return {(t1 + t2) * 0.5, t == 0. ? 0. : 2000. * RADIUS * PI / N / t};
   }
 
