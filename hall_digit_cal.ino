@@ -1,4 +1,4 @@
-// #define SERVO
+#define SERVO
 
 #ifdef SERVO
 #include <Event.h>
@@ -7,11 +7,11 @@
 #define SERVO_PIN A1
 #endif
 
-#define ANALOG_PIN A0 // AO to A0
-#define UPPER 600     // no magnet upper threshold
-#define LOWER 400     // no magnet lower threshold
-#define N 12          // number of magnets
-#define RADIUS 0.065  // radius in meter
+#define ANALOG_PIN A0      // AO to A0
+#define UPPER 600          // no magnet upper threshold
+#define LOWER 400          // no magnet lower threshold
+#define N 2                // number of magnets
+#define RADIUS (180. / PI) // radius in meter
 
 using Time = unsigned long;
 
@@ -31,7 +31,7 @@ template <size_t SIZE = 4> class Buffer {
   size_t end = 0; // An exclusive terminal index
   Time time[SIZE]{};
   Sign sign[SIZE]{};
-  Velocity v;
+  Velocity v[SIZE]{};
 
 public:
   void update(const Time t, const Sign s) {
@@ -55,26 +55,30 @@ public:
     sign[end] = s;
     {
       // Calculate vecolcity
-      Velocity v;
       if (sign[end] != Sign::Neutral) {
         // 0-1 <=> 2-3
         // 0-1 <=> 1-2
         if (sign[last] == Sign::Neutral) {
-          v = vel_block((size_t[]){0, 1, 2, 3});
+          v[end] = vel_block((size_t[]){0, 1, 2, 3});
         } else {
-          v = vel_block((size_t[]){0, 1, 1, 2});
+          v[end] = vel_block((size_t[]){0, 1, 1, 2});
         }
       } else if (sign[index(2)] != Sign::Neutral) {
         // 1-2 <=> 2-3 (neutral)
-        v = vel_block((size_t[]){1, 2, 2, 3});
+        v[end] = vel_block((size_t[]){1, 2, 2, 3});
       } else {
         goto end;
       }
       // Calculate acceleration
-      const float t = v.time - this->v.time;
-      const float acc = t == 0. ? 0. : 1000. * (v.v - this->v.v) / t;
-      Serial.println(String(v.time) + " " + String(v.v) + " " + String(acc));
-      this->v = v;
+      const Velocity v1 = {(v[end].time + v[last].time) * 0.5,
+                           (v[end].v + v[last].v) * 0.5};
+      const Velocity v2 = {(v[index(2)].time + v[index(3)].time) * 0.5,
+                           (v[index(2)].v + v[index(3)].v) * 0.5};
+      const Time t = v1.time - v2.time;
+      const float a = t == 0. ? 0. : 1000. * (v1.v - v2.v) / t;
+      // Print
+      const Velocity *vp = &v[end];
+      Serial.println(String(vp->time) + " " + String(vp->v) + " " + String(a));
     }
   end:
     end += 1;
@@ -83,10 +87,10 @@ public:
   }
 
   auto vel_block(const size_t (&ind)[4]) const -> Velocity {
-    const float t1 = float(time[index(ind[0])] + time[index(ind[1])]) * 0.5;
-    const float t2 = float(time[index(ind[2])] + time[index(ind[3])]) * 0.5;
-    const float t = abs(t1 - t2);
-    return {(t1 + t2) * 0.5, t == 0. ? 0. : 2000. * RADIUS * PI / N / t};
+    const Time t1 = time[index(ind[0])] + time[index(ind[1])];
+    const Time t2 = time[index(ind[2])] + time[index(ind[3])];
+    const float t = (t1 - t2) * 0.5;
+    return {(t1 + t2) * 0.25, t == 0. ? 0. : 2000. * RADIUS * PI / N / t};
   }
 
   // Negative index from the end, where `index(0) == end`.
