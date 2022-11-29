@@ -1,4 +1,4 @@
-#define SERVO
+// #define SERVO
 
 #ifdef SERVO
 #include <Event.h>
@@ -7,11 +7,11 @@
 #define SERVO_PIN A1
 #endif
 
-#define ANALOG_PIN A0      // AO to A0
-#define UPPER 600          // no magnet upper threshold
-#define LOWER 400          // no magnet lower threshold
-#define N 4                // number of magnets
-#define RADIUS (180. / PI) // radius in meter
+#define ANALOG_PIN A0 // AO to A0
+#define UPPER 600     // no magnet upper threshold
+#define LOWER 400     // no magnet lower threshold
+#define N 12          // number of magnets
+#define RADIUS 0.65   // radius in meter
 
 using Time = unsigned long;
 
@@ -81,8 +81,7 @@ public:
       const float a = t == 0. ? 0. : 1000. * (v1.v - v2.v) / t;
       // Print
       const Velocity *vp = &v[v_end];
-      Serial.println(String(vp->time) + " " + String(analog) + " " +
-                     String(vp->v) + " " + String(a));
+      Serial.println(String(vp->time) + " " + String(vp->v) + " " + String(a));
       v_end += 1;
       if (v_end == SIZE)
         v_end = 0;
