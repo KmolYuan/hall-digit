@@ -31,11 +31,13 @@ template <size_t SIZE = 4> class Buffer {
   size_t end = 0; // An exclusive terminal index
   Time time[SIZE]{};
   Sign sign[SIZE]{};
+  size_t counter = 0;
   Velocity v;
 
 public:
   void update(const Time t, const Sign s) {
     const size_t last = index(1);
+    // Duplicated time step
     if (t == time[last])
       return;
     // Update last (or append new signal)
@@ -71,10 +73,21 @@ public:
         goto end;
       }
       // Calculate acceleration
-      const float t = v.time - this->v.time;
-      const float acc = t == 0. ? 0. : 1000. * (v.v - this->v.v) / t;
-      Serial.println(String(v.time) + " " + String(v.v) + " " + String(acc));
-      this->v = v;
+      if (counter < SIZE) {
+        this->v.time = v.time;
+        this->v.v += v.v;
+        if (counter == SIZE - 1) {
+          this->v.v /= SIZE;
+        }
+      } else {
+        constexpr float FACTOR = 2. / (SIZE + 1);
+        v.v = (v.v - this->v.v) * FACTOR + this->v.v;
+        const float t = v.time - this->v.time;
+        const float acc = t == 0. ? 0. : 1000. * (v.v - this->v.v) / t;
+        Serial.println(String(v.time) + " " + String(v.v) + " " + String(acc));
+        this->v = v;
+      }
+      counter += 1;
     }
   end:
     end += 1;
