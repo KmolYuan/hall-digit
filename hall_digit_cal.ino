@@ -10,8 +10,9 @@
 #define ANALOG_PIN A0 // AO to A0
 #define UPPER 600     // no magnet upper threshold
 #define LOWER 400     // no magnet lower threshold
-#define N 12          // number of magnets
-#define RADIUS 0.065  // radius in meter
+#define N 4           // number of magnets
+#define RADIUS 0.038  // radius in meter
+#define EXP_F 0.92    // experimental factor
 
 using Time = unsigned long;
 
@@ -47,6 +48,7 @@ public:
     }
     // Add missing signal
     if (sign[last] == Sign::Neutral && sign[index(2)] == s) {
+      Serial.println("Patch!");
       if (s == Sign::Positive)
         sign[last] = Sign::Negative;
       else if (s == Sign::Negative)
@@ -79,15 +81,16 @@ public:
         if (counter == SIZE - 1) {
           this->v.v /= SIZE;
         }
+        counter += 1;
       } else {
         constexpr float FACTOR = 2. / (SIZE + 1);
         v.v = (v.v - this->v.v) * FACTOR + this->v.v;
         const float t = v.time - this->v.time;
         const float acc = t == 0. ? 0. : 1000. * (v.v - this->v.v) / t;
-        Serial.println(String(v.time) + " " + String(v.v) + " " + String(acc));
+        Serial.println(String(v.time) + " " + String(v.v * EXP_F) + " " +
+                       String(acc * EXP_F));
         this->v = v;
       }
-      counter += 1;
     }
   end:
     end += 1;
